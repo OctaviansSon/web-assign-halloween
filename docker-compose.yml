@@ -1,0 +1,47 @@
+name: space-bounty-hunters
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bounty-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bounty}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bounty_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bounty}
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # named volume: data survives `docker compose down`
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # no "ports": the database is reachable only from the backend network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: space-bounty-hunters-api:1.0
+    container_name: bounty-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy   # start the API only when Postgres accepts connections
+    environment:
+      # "db" is the service name = DNS name inside the Docker network
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-bounty}:${POSTGRES_PASSWORD:-bounty_password}@db:5432/${POSTGRES_DB:-bounty}
+      AUTO_SEED: ${AUTO_SEED:-true}
+    ports:
+      - "${API_PORT:-8000}:8000"      # host:container
+    networks:
+      - backend
+
+volumes:
+  pgdata:
+
+networks:
+  backend:
+    driver: bridge

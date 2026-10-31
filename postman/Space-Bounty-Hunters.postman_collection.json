@@ -1,0 +1,1134 @@
+{
+  "info": {
+    "_postman_id": "783f90f2-992e-48f7-87dc-62b9a311c9f0",
+    "name": "Space Bounty Hunters API",
+    "description": "Midterm practical assignment - Space Bounty Hunters REST API (FastAPI + PostgreSQL).\n\n1. Start the API: `docker compose up --build` (the database is created and pre-filled automatically).\n2. Import this collection. The collection variable `baseUrl` is http://localhost:8000.\n3. Open the collection -> Run -> keep the order -> Run. Every request has tests; all of them should pass.\n\nFolders: 1. criminals (list / filter / sort / details), 2. hunt logs CRUD, 3. invalid requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Wanted criminals",
+      "description": "Listing, filtering, sorting and details. The database is pre-filled (8 criminals).",
+      "item": [
+        {
+          "name": "List criminals (all)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                ""
+              ]
+            },
+            "description": "GET /api/criminals/ - the whole list ordered by id. Saves the first id as {{criminalId}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Returns an array of at least 5 criminals\", function () { pm.expect(items).to.be.an(\"array\"); pm.expect(items.length).to.be.above(4); });",
+                  "pm.test(\"Each criminal has all the fields\", function () { pm.expect(items.every(c => [\"id\",\"name\",\"nickname\",\"reward\",\"latitude\",\"longitude\",\"location_note\",\"difficulty\",\"armed\",\"has_crew\",\"escape_master\"].every(k => k in c))).to.be.true; });",
+                  "// remember a criminal for the next requests",
+                  "pm.collectionVariables.set(\"criminalId\", String(items[0].id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List criminals - min_reward + armed + sort=-reward (assignment example)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/?min_reward=5000&armed=true&sort=-reward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "min_reward",
+                  "value": "5000"
+                },
+                {
+                  "key": "armed",
+                  "value": "true"
+                },
+                {
+                  "key": "sort",
+                  "value": "-reward"
+                }
+              ]
+            },
+            "description": "Filters work together: minimum bounty AND armed, sorted by reward descending."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Every criminal is armed and has reward >= 5000\", function () { pm.expect(items.length).to.be.above(0); pm.expect(items.every(c => c.armed === true && c.reward >= 5000)).to.be.true; });",
+                  "pm.test(\"Sorted by reward, highest first\", function () { pm.expect(items.every((c, i) => i === 0 || items[i - 1].reward >= c.reward)).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List criminals - reward range + has_crew + escape_master",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/?min_reward=10000&max_reward=100000&has_crew=true&escape_master=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "min_reward",
+                  "value": "10000"
+                },
+                {
+                  "key": "max_reward",
+                  "value": "100000"
+                },
+                {
+                  "key": "has_crew",
+                  "value": "true"
+                },
+                {
+                  "key": "escape_master",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "min_reward, max_reward (both inclusive) and two boolean filters at once."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Every criminal matches all four filters\", function () { pm.expect(items.length).to.be.above(0); pm.expect(items.every(c => c.reward >= 10000 && c.reward <= 100000 && c.has_crew === true && c.escape_master === true)).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List criminals - armed=false (unarmed only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/?armed=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "armed",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "A boolean filter with the value false must filter too (it is not the same as 'no filter')."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Only unarmed criminals are returned\", function () { pm.expect(items.length).to.be.above(0); pm.expect(items.every(c => c.armed === false)).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List criminals - sort=reward (ascending)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/?sort=reward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "reward"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Sorted by reward, lowest first\", function () { pm.expect(items.length).to.be.above(1); pm.expect(items.every((c, i) => i === 0 || items[i - 1].reward <= c.reward)).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get criminal details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/{{criminalId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                "{{criminalId}}",
+                ""
+              ]
+            },
+            "description": "GET /api/criminals/{id}/"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const c = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Returns the requested criminal\", function () { pm.expect(String(c.id)).to.eql(pm.collectionVariables.get(\"criminalId\")); });",
+                  "pm.test(\"Difficulty is between 1 and 10\", function () { pm.expect(c.difficulty >= 1 && c.difficulty <= 10).to.be.true; });",
+                  "pm.test(\"Boolean attributes are booleans\", function () { pm.expect(c.armed).to.be.a(\"boolean\"); pm.expect(c.has_crew).to.be.a(\"boolean\"); pm.expect(c.escape_master).to.be.a(\"boolean\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Hunt logs (CRUD)",
+      "description": "Run top to bottom: the requests create, read, update and delete their own hunt logs (ids are stored in collection variables), so the pre-filled data is left untouched.",
+      "item": [
+        {
+          "name": "List hunt logs (all)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                ""
+              ]
+            },
+            "description": "GET /api/hunts/ - READ (list). Saves the first id as {{seedHuntId}} (used by the error-case requests)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Returns an array of at least 10 hunt logs\", function () { pm.expect(items).to.be.an(\"array\"); pm.expect(items.length).to.be.above(9); });",
+                  "pm.test(\"Each log has id, criminal_id, success, notes, created_at\", function () { pm.expect(items.every(h => [\"id\",\"criminal_id\",\"success\",\"notes\",\"created_at\"].every(k => k in h))).to.be.true; });",
+                  "pm.collectionVariables.set(\"seedHuntId\", String(items[0].id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List hunt logs of one criminal (criminal_id filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/?criminal_id={{criminalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "criminal_id",
+                  "value": "{{criminalId}}"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Every log belongs to the requested criminal\", function () { pm.expect(items.length).to.be.above(0); pm.expect(items.every(h => String(h.criminal_id) === pm.collectionVariables.get(\"criminalId\"))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create hunt log",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                ""
+              ]
+            },
+            "description": "POST /api/hunts/ - CREATE. The example body from the assignment. Saves the new id as {{huntId}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"criminal_id\": {{criminalId}},\n  \"success\": false,\n  \"notes\": \"Target escaped through an asteroid field.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const h = pm.response.json();",
+                  "pm.test(\"Status code is 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Response contains the created log\", function () { pm.expect(String(h.criminal_id)).to.eql(pm.collectionVariables.get(\"criminalId\")); pm.expect(h.success).to.eql(false); pm.expect(h.notes).to.eql(\"Target escaped through an asteroid field.\"); });",
+                  "pm.test(\"id and created_at were generated by the server\", function () { pm.expect(h.id).to.be.a(\"number\"); pm.expect(h.created_at).to.be.a(\"string\"); });",
+                  "pm.collectionVariables.set(\"huntId\", String(h.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create hunt log - client-supplied created_at is ignored",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                ""
+              ]
+            },
+            "description": "Demonstrates the automatic timestamp: the value sent by the client is thrown away. Saves the id as {{huntId2}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"criminal_id\": {{criminalId}},\n  \"success\": false,\n  \"notes\": \"The client tries to set created_at - the server must ignore it.\",\n  \"created_at\": \"2000-01-01T00:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const h = pm.response.json();",
+                  "pm.test(\"Status code is 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"created_at comes from the server, not from the request body\", function () { pm.expect(h.created_at.startsWith(\"2000\")).to.be.false; });",
+                  "pm.collectionVariables.set(\"huntId2\", String(h.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get hunt log by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/{{huntId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "{{huntId}}",
+                ""
+              ]
+            },
+            "description": "GET /api/hunts/{id}/ - READ (one)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const h = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Returns the log created above\", function () { pm.expect(String(h.id)).to.eql(pm.collectionVariables.get(\"huntId\")); pm.expect(h.success).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update hunt log (PATCH success + notes)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/{{huntId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "{{huntId}}",
+                ""
+              ]
+            },
+            "description": "PATCH /api/hunts/{id}/ - UPDATE success and notes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"success\": true,\n  \"notes\": \"Captured after a chase through the rings of Saturn.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const h = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"success and notes were updated\", function () { pm.expect(h.success).to.eql(true); pm.expect(h.notes).to.eql(\"Captured after a chase through the rings of Saturn.\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update hunt log (PATCH notes only)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/{{huntId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "{{huntId}}",
+                ""
+              ]
+            },
+            "description": "A partial update: only the fields that are sent are changed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Bounty paid out at the Mars office.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const h = pm.response.json();",
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"notes changed, success stayed as it was\", function () { pm.expect(h.notes).to.eql(\"Bounty paid out at the Mars office.\"); pm.expect(h.success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete hunt log",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/{{huntId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "{{huntId}}",
+                ""
+              ]
+            },
+            "description": "DELETE /api/hunts/{id}/ - DELETE."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 204\", function () { pm.response.to.have.status(204); });",
+                  "pm.test(\"Response body is empty\", function () { pm.expect(pm.response.text()).to.eql(\"\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get deleted hunt log (expect 404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/{{huntId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "{{huntId}}",
+                ""
+              ]
+            },
+            "description": "Confirms that the log is really gone."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete second hunt log (cleanup)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/{{huntId2}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "{{huntId2}}",
+                ""
+              ]
+            },
+            "description": "Removes the log created by the created_at demonstration."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Invalid requests",
+      "description": "Error handling: 404 for ids that do not exist, 422 for malformed or invalid data.",
+      "item": [
+        {
+          "name": "Create hunt log - criminal does not exist (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                ""
+              ]
+            },
+            "description": "Each journal entry must reference an existing criminal.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"criminal_id\": 999999,\n  \"success\": false,\n  \"notes\": \"There is no such criminal.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create hunt log - invalid body (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                ""
+              ]
+            },
+            "description": "criminal_id is missing, success is not a boolean, notes is not a string.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"success\": \"definitely\",\n  \"notes\": 42\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update hunt log - empty body (422)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/{{seedHuntId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "{{seedHuntId}}",
+                ""
+              ]
+            },
+            "description": "PATCH needs at least one of: success, notes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update hunt log - not found (404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/999999/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "999999",
+                ""
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"success\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete hunt log - not found (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/999999/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "999999",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get hunt log - not found (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/999999/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                "999999",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get criminal - not found (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/999999/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                "999999",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get criminal - id is not a number (422)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/abc/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                "abc",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List criminals - invalid sort value (422)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/?sort=cheapest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "cheapest"
+                }
+              ]
+            },
+            "description": "Only sort=reward and sort=-reward are allowed."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List criminals - min_reward greater than max_reward (422)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/criminals/?min_reward=9000&max_reward=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "criminals",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "min_reward",
+                  "value": "9000"
+                },
+                {
+                  "key": "max_reward",
+                  "value": "100"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List hunt logs - criminal_id is not a number (422)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hunts/?criminal_id=abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "hunts",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "criminal_id",
+                  "value": "abc"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"Error response explains the problem (detail)\", function () { pm.expect(\"detail\" in pm.response.json()).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "criminalId",
+      "value": "1"
+    },
+    {
+      "key": "huntId",
+      "value": ""
+    },
+    {
+      "key": "huntId2",
+      "value": ""
+    },
+    {
+      "key": "seedHuntId",
+      "value": "1"
+    }
+  ]
+}
